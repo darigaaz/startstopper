@@ -1,11 +1,14 @@
 package startstopper_test
 
 import (
+	"errors"
 	"testing"
 	"time"
 
 	"github.com/Darigaaz/startstopper"
 )
+
+var someError = errors.New("some error")
 
 func TestStartStopper_Start(t *testing.T) {
 	t.Run("Start", func(t *testing.T) {
@@ -75,10 +78,29 @@ func TestStartStopper_Stop(t *testing.T) {
 		}
 
 		go func() {
-			done := <- closingCh
+			done := <-closingCh
 			done(nil)
 		}()
 
+		startStopper.Stop(nil)
+	})
+
+	t.Run("Stop without notify with error", func(t *testing.T) {
+		startStopper := startstopper.StartStopper{}
+		ready := make(chan error, 1)
+		closingCh, err := startStopper.Start(ready)
+		<-ready
+
+		if closingCh == nil || err != nil {
+			t.Errorf("want channel and nil error, got: %v, %v", closingCh, err)
+		}
+
+		go func() {
+			done := <-closingCh
+			done(someError)
+		}()
+
+		// error is ignored
 		startStopper.Stop(nil)
 	})
 
@@ -93,7 +115,7 @@ func TestStartStopper_Stop(t *testing.T) {
 		}
 
 		go func() {
-			done := <- closingCh
+			done := <-closingCh
 			done(nil)
 		}()
 
@@ -111,12 +133,41 @@ func TestStartStopper_Stop(t *testing.T) {
 		}
 	})
 
+	t.Run("Stop with notify with error", func(t *testing.T) {
+		startStopper := startstopper.StartStopper{}
+		ready := make(chan error, 1)
+		closingCh, err := startStopper.Start(ready)
+		<-ready
+
+		if closingCh == nil || err != nil {
+			t.Errorf("want channel and nil error, got: %v, %v", closingCh, err)
+		}
+
+		go func() {
+			done := <-closingCh
+			done(someError)
+		}()
+
+		errStop := make(chan error, 1)
+		startStopper.Stop(errStop)
+
+		select {
+		case err := <-errStop:
+			if err != someError {
+				t.Errorf("want stop with someError error, got: %v", err)
+			}
+			return
+		case <-time.After(time.Second):
+			t.Errorf("failed to stop in 1 sec")
+		}
+	})
+
 	t.Run("Stop stopped", func(t *testing.T) {
 		startStopper := startstopper.StartStopper{}
 
 		errStop := make(chan error, 1)
 		startStopper.Stop(errStop)
-		err := <- errStop
+		err := <-errStop
 
 		if err != startstopper.ErrAlreadyClosed {
 			t.Errorf("want ErrAlreadyClosed, got: %v", err)

@@ -22,7 +22,7 @@ func (startStopper *StartStopper) init() {
 }
 
 // Returns closingCh and error if service can not be started (already running)
-func (startStopper *StartStopper) Start(readyCh chan error) (<- chan func(error), error) {
+func (startStopper *StartStopper) Start(readyCh chan error) (<-chan func(error), error) {
 	startStopper.mu.Lock()
 	startStopper.init()
 
@@ -77,4 +77,3 @@ func (startStopper *StartStopper) Stop(errCh chan error) {
 
 	closingCh <- notifyFunc
 }
-

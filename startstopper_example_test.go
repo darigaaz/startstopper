@@ -72,7 +72,7 @@ func ExampleStartStopper() {
 	srv.DoStuff(3)
 
 	stoppedCh := make(chan error, 1)
-	// pass stoppedCh or nil if you dont want to be notified on 'started'
+	// pass stoppedCh or nil if you dont want to be notified on 'stopped'
 	srv.Stop(stoppedCh)
 	fmt.Println(<-stoppedCh)
 

@@ -174,3 +174,28 @@ func TestStartStopper_Stop(t *testing.T) {
 		}
 	})
 }
+
+func TestStartStopper_StartStopStartStop(t *testing.T) {
+	t.Run("multiple Start Stop", func(t *testing.T) {
+		startStopper := startstopper.StartStopper{}
+
+		for i := 0; i < 2; i++ {
+			readyCh := make(chan error, 1)
+			closingCh, err := startStopper.Start(readyCh)
+			<-readyCh
+
+			if closingCh == nil || err != nil {
+				t.Errorf("loop %d: want channel and nil error, got: %v, %v", i+1, closingCh, err)
+			}
+
+			go func() {
+				done := <-closingCh
+				done(nil)
+			}()
+
+			stopCh := make(chan error, 1)
+			startStopper.Stop(stopCh)
+			<-stopCh
+		}
+	})
+}

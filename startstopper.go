@@ -6,7 +6,7 @@ import (
 )
 
 var ErrAlreadyStarted = errors.New("already started")
-var ErrAlreadyClosed = errors.New("already started")
+var ErrAlreadyClosed = errors.New("already stopped")
 
 type StartStopper struct {
 	mu      sync.Mutex
@@ -21,14 +21,15 @@ func (startStopper *StartStopper) init() {
 	}
 }
 
-// Returns closingCh and error if service can not be started (already running)
+// Returns closingCh and error if service can not be started (already started)
+// readyCh will be closed
 func (startStopper *StartStopper) Start(readyCh chan error) (<-chan func(error), error) {
 	startStopper.mu.Lock()
 	startStopper.init()
 
 	closingCh := startStopper.closing
-
 	wasStarted := startStopper.started
+
 	if !wasStarted {
 		startStopper.started = true
 	}
@@ -50,12 +51,13 @@ func (startStopper *StartStopper) Start(readyCh chan error) (<-chan func(error),
 	return closingCh, nil
 }
 
+// errCh will be closed on notifyFunc
 func (startStopper *StartStopper) Stop(errCh chan error) {
 	startStopper.mu.Lock()
 	startStopper.init()
 
-	wasStarted := startStopper.started
 	closingCh := startStopper.closing
+	wasStarted := startStopper.started
 
 	startStopper.started = false
 
